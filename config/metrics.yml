@@ -1,0 +1,72 @@
+gross_sales:
+  name: Gross Sales
+  definition: Sum of quantity multiplied by unit price for valid, deduplicated POS lines, before discount and tax.
+  grain: Business date, fiscal period, channel and outlet
+  formula: sum(quantity * unit_price)
+  filters: [valid transaction key, valid timestamp, quantity greater than zero, non-negative unit price]
+  exclusions: [duplicate transaction lines]
+  sources: [pos_transactions, fiscal_calendar]
+  owner: Finance
+  limitations: [POS covers partner channels represented in the source feed]
+  query: sql/queries/gross_sales.sql
+
+units_sold:
+  name: Units Sold (Eaches)
+  definition: Individual selling units after converting case quantities using the UOM reference.
+  grain: Business date, fiscal period and channel
+  formula: EA quantity + CS quantity * eaches_per_case
+  filters: [positive quantity]
+  exclusions: [case rows without a conversion are reported as unresolved and excluded]
+  sources: [pos_transactions, uom_conversion]
+  owner: Sales Operations
+  limitations: [the UOM reference intentionally omits some SKUs]
+  query: sql/queries/units_sold.sql
+
+finance_variance:
+  name: Finance Sales Variance
+  definition: Trusted weekly gross sales minus the value in the published legacy Finance report.
+  grain: Week ending and channel
+  formula: trusted_gross_sales - finance_gross_sales
+  filters: [weeks represented in the Finance report]
+  exclusions: []
+  sources: [pos_transactions, legacy_finance_weekly_report]
+  owner: Finance
+  limitations: [legacy week-ending convention is retained for comparison]
+  query: sql/queries/finance_reconciliation.sql
+
+cold_chain_excursion_rate:
+  name: Cold-chain Excursion Rate
+  definition: Percentage of observed vehicle-route-days with at least one valid reading above 8 degrees Celsius.
+  grain: Month and warehouse
+  formula: breached observed trips / observed trips
+  filters: [valid normalized temperatures]
+  exclusions: [null readings, unreadable source files]
+  sources: [reefer_telemetry, warehouse_master]
+  owner: Supply Chain Operations
+  limitations: [vehicle-route-day is a proxy because no trip identifier or carrier mapping is supplied; single-reading breaches may include sensor spikes]
+  query: sql/queries/cold_chain_excursion.sql
+
+warehouse_cycle_time:
+  name: Median Warehouse Cycle Time
+  definition: Median elapsed time from an order's first RECEIVE scan to its last DISPATCH scan at a warehouse.
+  grain: Warehouse
+  formula: median(last dispatch - first receive)
+  filters: [both boundary events present, non-negative duration]
+  exclusions: [incomplete and invalid event sequences]
+  sources: [wms_scan_events, warehouse_master]
+  owner: Warehouse Operations
+  limitations: [source handhelds can drop buffered scans]
+  query: sql/queries/warehouse_cycle_time.sql
+
+data_completeness:
+  name: Partition Completeness
+  definition: Percentage of manifest partitions whose files are present, readable and match expected counts.
+  grain: Feed and partition
+  formula: passing partitions / expected partitions
+  filters: [manifested feeds]
+  exclusions: []
+  sources: [expected_partitions, raw files]
+  owner: Data Engineering
+  limitations: [the manifest represents what ingestion believed it wrote]
+  query: output/data_quality_report.csv
+
