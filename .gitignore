@@ -1,8 +1,32 @@
+# Virtual environment
 .venv/
-__pycache__/
-.pytest_cache/
-*.py[cod]
-data/
-output/
-!.gitkeep
+venv/
 
+# All datasets
+data/
+data_test/
+data_10x/
+generated_data/
+
+# Generated outputs
+output/
+output_test/
+
+# Databases and Parquet
+*.duckdb
+*.duckdb.wal
+*.parquet
+
+# Python cache
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# IDE and system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Archives
+*.zip
